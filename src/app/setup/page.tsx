@@ -9,6 +9,8 @@ type Track = {
     preview_url?: string;
 };
 
+export const dynamic = "force-dynamic";
+
 export default function SetupPage() {
     const params = useSearchParams();
     const username = params.get("u");

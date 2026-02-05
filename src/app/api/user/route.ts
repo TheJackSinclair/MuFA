@@ -1,5 +1,9 @@
 import { redis } from "@/lib/redis";
 
+/* ───────────────────────────
+   Domain Types
+─────────────────────────── */
+
 type Track = {
     id: string;
     name: string;
@@ -11,7 +15,19 @@ type UserRecord = {
     locked: boolean;
 };
 
+/* ───────────────────────────
+   POST /api/user
+─────────────────────────── */
+
 export async function POST(req: Request) {
+    // ── Safety guard for local builds ──
+    if (!redis) {
+        return Response.json(
+            { error: "Redis not configured" },
+            { status: 500 }
+        );
+    }
+
     const body: {
         username: string;
         guess?: string;
@@ -23,35 +39,46 @@ export async function POST(req: Request) {
     const userKey = `user:${username}`;
     const challengeKey = `challenge:${username}`;
 
-    const user = await redis.get<UserRecord>(userKey);
+    /* ───────────────────────────
+       New user setup
+    ──────────────────────────── */
+    const existingUser = await redis.get<UserRecord>(userKey);
 
-    // ─── Setup new user ─────────────────────
-    if (!user && setupSongs) {
+    if (!existingUser && setupSongs) {
         const newUser: UserRecord = {
             songs: setupSongs,
             locked: false,
         };
 
         await redis.set(userKey, newUser);
+
         return Response.json({ created: true });
     }
 
-    // ─── User not found ─────────────────────
-    if (!user) {
+    /* ───────────────────────────
+       User does not exist
+    ──────────────────────────── */
+    if (!existingUser) {
         return Response.json({ exists: false });
     }
 
-    // ─── Locked account ─────────────────────
-    if (user.locked) {
+    /* ───────────────────────────
+       Locked account
+    ──────────────────────────── */
+    if (existingUser.locked) {
         return Response.json({ locked: true });
     }
 
-    // ─── Start challenge ────────────────────
+    /* ───────────────────────────
+       Start login challenge
+    ──────────────────────────── */
     if (!guess) {
         const song =
-            user.songs[Math.floor(Math.random() * user.songs.length)];
+            existingUser.songs[
+                Math.floor(Math.random() * existingUser.songs.length)
+                ];
 
-        // optional: expire challenge after 30s
+        // Store challenge with TTL (30s)
         await redis.set(challengeKey, song, { ex: 30 });
 
         return Response.json({
@@ -60,7 +87,9 @@ export async function POST(req: Request) {
         });
     }
 
-    // ─── Verify guess ───────────────────────
+    /* ───────────────────────────
+       Verify guess
+    ──────────────────────────── */
     const challenge = await redis.get<Track>(challengeKey);
 
     if (
@@ -71,8 +100,13 @@ export async function POST(req: Request) {
         return Response.json({ success: true });
     }
 
-    // Lock on failure
-    await redis.set(userKey, { ...user, locked: true });
+    /* ───────────────────────────
+       Lock account on failure
+    ──────────────────────────── */
+    await redis.set(userKey, {
+        ...existingUser,
+        locked: true,
+    });
 
     return Response.json({ success: false });
 }

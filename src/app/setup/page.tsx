@@ -1,7 +1,11 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+
+/* ───────────────────────────
+   Types
+─────────────────────────── */
 
 type Track = {
     id: string;
@@ -9,9 +13,11 @@ type Track = {
     preview_url?: string;
 };
 
-export const dynamic = "force-dynamic";
+/* ───────────────────────────
+   Inner component (uses useSearchParams)
+─────────────────────────── */
 
-export default function SetupPage() {
+function SetupInner() {
     const params = useSearchParams();
     const username = params.get("u");
 
@@ -39,9 +45,9 @@ export default function SetupPage() {
                 setupSongs: selected.map((t) => ({
                     id: t.id,
                     name: t.name,
-                    preview_url: t.preview_url
-                }))
-            })
+                    preview_url: t.preview_url,
+                })),
+            }),
         });
 
         window.location.href = "/";
@@ -57,61 +63,45 @@ export default function SetupPage() {
                     Choose 5 songs only you would recognize
                 </p>
 
-                {/* Search */}
-                <label className="block text-sm text-emerald-200 mb-2">
-                    Search songs
-                </label>
                 <div className="flex gap-2 mb-6">
                     <input
-                        className="flex-1 px-4 py-3 rounded-lg bg-black/40 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Start typing a song title"
+                        className="flex-1 px-4 py-3 rounded-lg bg-black/40 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="Search for a song"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                     />
                     <button
                         onClick={search}
-                        className="px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition font-medium"
+                        className="px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition"
                     >
                         Search
                     </button>
                 </div>
 
-                {/* Results */}
                 <div className="space-y-2 max-h-44 overflow-y-auto mb-6">
                     {results.map((track) => {
-                        const alreadySelected = selected.some(
-                            (s) => s.id === track.id
-                        );
+                        const added = selected.some((s) => s.id === track.id);
 
                         return (
                             <div
                                 key={track.id}
                                 className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2"
                             >
-                <span className="text-sm text-emerald-100 truncate pr-2">
+                <span className="text-sm text-emerald-100 truncate">
                   {track.name}
                 </span>
                                 <button
-                                    disabled={alreadySelected || selected.length === 5}
-                                    onClick={() =>
-                                        setSelected([...selected, track])
-                                    }
-                                    className="text-xs px-3 py-1 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                    disabled={added || selected.length === 5}
+                                    onClick={() => setSelected([...selected, track])}
+                                    className="text-xs px-3 py-1 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40"
                                 >
-                                    {alreadySelected ? "Added" : "Add"}
+                                    {added ? "Added" : "Add"}
                                 </button>
                             </div>
                         );
                     })}
-
-                    {results.length === 0 && (
-                        <p className="text-sm text-emerald-400 text-center">
-                            Search for songs to begin
-                        </p>
-                    )}
                 </div>
 
-                {/* Footer */}
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-emerald-300">
                         {selected.length} / 5 selected
@@ -120,7 +110,7 @@ export default function SetupPage() {
                     {selected.length === 5 && (
                         <button
                             onClick={finishSetup}
-                            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition font-medium"
+                            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition"
                         >
                             Finish
                         </button>
@@ -134,5 +124,25 @@ export default function SetupPage() {
                 )}
             </div>
         </main>
+    );
+}
+
+/* ───────────────────────────
+   Suspense wrapper (required)
+─────────────────────────── */
+
+export default function SetupPage() {
+    return (
+        <Suspense
+            fallback={
+                <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1f3a30] via-[#2f5546] to-black">
+                    <div className="text-emerald-200 text-sm">
+                        Loading setup…
+                    </div>
+                </main>
+            }
+        >
+            <SetupInner />
+        </Suspense>
     );
 }

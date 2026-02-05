@@ -1,4 +1,4 @@
-import { kv } from "@vercel/kv";
+import { redis } from "@/lib/redis";
 
 type Track = {
     id: string;
@@ -23,43 +23,36 @@ export async function POST(req: Request) {
     const userKey = `user:${username}`;
     const challengeKey = `challenge:${username}`;
 
-    const user = await kv.get<UserRecord>(userKey);
+    const user = await redis.get<UserRecord>(userKey);
 
-    // ─────────────────────────────────────
-    // NEW USER SETUP
-    // ─────────────────────────────────────
+    // ─── Setup new user ─────────────────────
     if (!user && setupSongs) {
         const newUser: UserRecord = {
             songs: setupSongs,
             locked: false,
         };
 
-        await kv.set(userKey, newUser);
+        await redis.set(userKey, newUser);
         return Response.json({ created: true });
     }
 
-    // ─────────────────────────────────────
-    // USER DOES NOT EXIST
-    // ─────────────────────────────────────
+    // ─── User not found ─────────────────────
     if (!user) {
         return Response.json({ exists: false });
     }
 
-    // ─────────────────────────────────────
-    // ACCOUNT LOCKED
-    // ─────────────────────────────────────
+    // ─── Locked account ─────────────────────
     if (user.locked) {
         return Response.json({ locked: true });
     }
 
-    // ─────────────────────────────────────
-    // START LOGIN CHALLENGE
-    // ─────────────────────────────────────
+    // ─── Start challenge ────────────────────
     if (!guess) {
         const song =
             user.songs[Math.floor(Math.random() * user.songs.length)];
 
-        await kv.set(challengeKey, song);
+        // optional: expire challenge after 30s
+        await redis.set(challengeKey, song, { ex: 30 });
 
         return Response.json({
             exists: true,
@@ -67,10 +60,8 @@ export async function POST(req: Request) {
         });
     }
 
-    // ─────────────────────────────────────
-    // VERIFY GUESS
-    // ─────────────────────────────────────
-    const challenge = await kv.get<Track>(challengeKey);
+    // ─── Verify guess ───────────────────────
+    const challenge = await redis.get<Track>(challengeKey);
 
     if (
         challenge &&
@@ -80,8 +71,8 @@ export async function POST(req: Request) {
         return Response.json({ success: true });
     }
 
-    // Lock account on failure
-    await kv.set(userKey, { ...user, locked: true });
+    // Lock on failure
+    await redis.set(userKey, { ...user, locked: true });
 
     return Response.json({ success: false });
 }

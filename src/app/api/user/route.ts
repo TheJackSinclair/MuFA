@@ -21,10 +21,17 @@ type Session = {
 };
 
 async function getRandomDecoy(): Promise<Track> {
-    const res = await fetch("https://api.deezer.com/chart/0/tracks");
+    const offset = Math.floor(Math.random() * 300);
+
+    const res = await fetch(
+        `https://api.deezer.com/search?q=track&index=${offset}&limit=25`
+    );
+
     const data = await res.json();
 
-    const t = data.data[Math.floor(Math.random() * data.data.length)];
+    const pool = data.data.filter((t: any) => t.preview);
+
+    const t = pool[Math.floor(Math.random() * pool.length)];
 
     return {
         id: String(t.id),
@@ -35,13 +42,16 @@ async function getRandomDecoy(): Promise<Track> {
 }
 
 async function getOptions(song: Track) {
-    const res = await fetch("https://api.deezer.com/chart/0/tracks");
+    const offset = Math.floor(Math.random() * 300);
+
+    const res = await fetch(
+        `https://api.deezer.com/search?q=track&index=${offset}&limit=30`
+    );
+
     const data = await res.json();
 
-    const shuffled = data.data.sort(() => Math.random() - 0.5);
-
-    const decoys = shuffled
-        .filter((t: any) => t.title !== song.name)
+    const decoys = data.data
+        .filter((t: any) => t.preview && t.title !== song.name)
         .slice(0, 4)
         .map((t: any) => ({
             id: String(t.id),
@@ -51,7 +61,6 @@ async function getOptions(song: Track) {
 
     return [...decoys, song].sort(() => Math.random() - 0.5);
 }
-
 
 export async function POST(req: Request) {
     if (!redis) return Response.json({}, { status: 500 });

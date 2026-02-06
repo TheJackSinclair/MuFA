@@ -21,17 +21,28 @@ export default function Page() {
   const button =
       "w-full py-3 rounded-xl transition-all duration-150 active:scale-95 shadow-md";
 
-  async function enableAudio() {
-    const AudioContextCtor =
-        (window as any).AudioContext ||
-        (window as any).webkitAudioContext;
+  /* AUDIO UNLOCK */
+  function enableAudio() {
+    try {
+      const AudioContextCtor =
+          (window as any).AudioContext ||
+          (window as any).webkitAudioContext;
 
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContextCtor();
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContextCtor();
+      }
+
+      const ctx = audioCtxRef.current;
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.start(0);
+
+      setAudioEnabled(true);
+    } catch {
+      setAudioEnabled(true);
     }
-
-    await audioCtxRef.current.resume();
-    setAudioEnabled(true);
   }
 
   async function playClip() {
@@ -41,9 +52,7 @@ export default function Page() {
       audioRef.current.currentTime = 0;
       await audioRef.current.play();
       setTimeout(() => audioRef.current?.pause(), 1000);
-    } catch {
-      setAudioEnabled(false);
-    }
+    } catch {}
   }
 
   function startTimer() {
@@ -173,10 +182,7 @@ export default function Page() {
   }
 
   useEffect(() => {
-    if (!preview || !audioEnabled) return;
-
-    const t = setTimeout(() => playClip(), 150);
-    return () => clearTimeout(t);
+    if (preview && audioEnabled) playClip();
   }, [preview, audioEnabled]);
 
   return (
@@ -196,7 +202,7 @@ export default function Page() {
                 )}
 
                 <input
-                    className="w-full mb-4 px-4 py-3 bg-black/40 rounded"
+                    className="w-full mb-4 px-4 py-3 bg-black/40 rounded-lg border border-white/10"
                     placeholder="Username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -204,9 +210,9 @@ export default function Page() {
 
                 <button
                     onClick={startLogin}
-                    disabled={!audioEnabled || username.trim() === ""}
+                    disabled={!audioEnabled}
                     className={`${button} ${
-                        audioEnabled && username.trim() !== ""
+                        audioEnabled
                             ? "bg-emerald-600 hover:bg-emerald-700"
                             : "bg-gray-600 cursor-not-allowed"
                     }`}
@@ -216,17 +222,45 @@ export default function Page() {
               </>
           )}
 
+          {locked && (
+              <>
+                <p className="text-red-300 mb-3 text-center">Account locked</p>
+                <input
+                    type="password"
+                    placeholder="Recovery password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full mb-3 px-4 py-2 bg-black/40 rounded"
+                />
+                <button
+                    onClick={unlock}
+                    className={`${button} bg-emerald-600 hover:bg-emerald-700`}
+                >
+                  Unlock
+                </button>
+              </>
+          )}
+
           {preview && (
               <>
-                <audio ref={audioRef} src={preview} preload="auto" playsInline />
+                <audio ref={audioRef} src={preview} playsInline />
 
-                <p className="text-red-300 mb-2">Time left: {timeLeft}s</p>
+                <p className="text-emerald-200 mb-1">
+                  Song {progress} of {total}
+                </p>
+                <p className="text-red-300 mb-3">Time left: {timeLeft}s</p>
 
-                <button onClick={replay} className={`${button} bg-emerald-600 mb-3`}>
+                <button
+                    onClick={replay}
+                    className={`${button} mb-3 bg-emerald-600 hover:bg-emerald-700`}
+                >
                   Replay ({replays})
                 </button>
 
-                <button onClick={notMySong} className={`${button} bg-red-600 mb-3`}>
+                <button
+                    onClick={notMySong}
+                    className={`${button} mb-3 bg-red-600 hover:bg-red-700`}
+                >
                   Not my song
                 </button>
 
@@ -234,7 +268,7 @@ export default function Page() {
                     <button
                         key={opt.id}
                         onClick={() => submitGuess(opt.name)}
-                        className={`${button} bg-emerald-700 mb-2`}
+                        className={`${button} mb-2 bg-emerald-700 hover:bg-emerald-600`}
                     >
                       {opt.name} — {opt.artist}
                     </button>

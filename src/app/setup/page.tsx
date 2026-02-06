@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 ─────────────────────────── */
 
 type Track = {
-    id: string;
+    id: string | number;
     name: string;
     preview_url?: string;
 };
@@ -29,10 +29,11 @@ function SetupInner() {
     async function search() {
         if (!query.trim()) return;
 
-        const res = await fetch(`/api/spotify?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/music?q=${encodeURIComponent(query)}`);
         const data = await res.json();
 
-        setResults(data.tracks?.items ?? []);
+        setResults(data.tracks ?? []);
+
     }
 
     async function finishSetup() {

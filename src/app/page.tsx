@@ -24,22 +24,18 @@ export default function Page() {
   function loadAndPlay(url: string) {
     if (!url) return;
 
-    if (!soundRef.current) {
-      soundRef.current = new Howl({
-        src: [url],
-        html5: true,
-        volume: 1,
-      });
-    } else {
+    const proxied = `/api/preview?url=${encodeURIComponent(url)}`;
+
+    if (soundRef.current) {
       soundRef.current.stop();
       soundRef.current.unload();
-
-      soundRef.current = new Howl({
-        src: [url],
-        html5: true,
-        volume: 1,
-      });
     }
+
+    soundRef.current = new Howl({
+      src: [proxied],
+      html5: true,
+      format: ["mp3"],
+    });
 
     soundRef.current.play();
 

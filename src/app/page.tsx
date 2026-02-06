@@ -55,20 +55,30 @@ export default function Page() {
     }
   }
 
-  async function playClip() {
+  async function playClip(randomStart = false) {
     if (!audioRef.current || !audioEnabled) return;
 
     try {
-      audioRef.current.currentTime = 0;
+      const audio = audioRef.current;
 
-      // Some mobile browsers require play() to be awaited and can still reject
-      await audioRef.current.play();
+      const duration = audio.duration || 30;
+      let startTime = 0;
 
-      setTimeout(() => audioRef.current?.pause(), 1000);
+      if (randomStart) {
+        const maxStart = Math.max(0, duration - 1.2);
+        startTime = Math.random() * maxStart;
+      }
+
+      audio.currentTime = startTime;
+
+      await audio.play();
+
+      setTimeout(() => {
+        audio.pause();
+      }, 1000);
     } catch {
-      // If blocked, force user to unlock again
       setAudioEnabled(false);
-      setAudioHint("Audio was blocked. Tap “Enable Audio” and try again.");
+      setAudioHint("Audio was blocked. Tap Enable Audio.");
     }
   }
 
@@ -201,7 +211,7 @@ export default function Page() {
 
   function replay() {
     if (replays <= 0) return;
-    playClip();
+    playClip(true);
     setReplays((r) => r - 1);
   }
 

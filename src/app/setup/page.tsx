@@ -1,7 +1,7 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
 
 type Track = {
     id: string;
@@ -10,7 +10,10 @@ type Track = {
     preview_url?: string;
 };
 
-export default function SetupPage() {
+/* -----------------------------
+   Inner component (uses router)
+------------------------------ */
+function SetupInner() {
     const username = useSearchParams().get("u");
 
     const [query, setQuery] = useState("");
@@ -40,7 +43,9 @@ export default function SetupPage() {
 
         await fetch("/api/user", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+            },
             body: JSON.stringify({
                 username,
                 password,
@@ -68,10 +73,9 @@ export default function SetupPage() {
                     </button>
                 </div>
 
-                {/* SEARCH RESULTS */}
-                <div className="grid grid-cols-1 gap-2 mb-4">
+                <div className="grid gap-2 mb-4">
                     {results.map((track) => {
-                        const isSelected = selected.find((s) => s.id === track.id);
+                        const selectedState = selected.find((s) => s.id === track.id);
 
                         return (
                             <button
@@ -79,14 +83,12 @@ export default function SetupPage() {
                                 onClick={() => toggleSong(track)}
                                 className={`text-left p-3 rounded-lg border transition
                 ${
-                                    isSelected
+                                    selectedState
                                         ? "bg-emerald-700 border-emerald-400"
                                         : "bg-white/5 border-white/10 hover:bg-white/10"
                                 }`}
                             >
-                                <div className="text-sm font-medium">
-                                    {track.name}
-                                </div>
+                                <div className="text-sm font-medium">{track.name}</div>
                                 <div className="text-xs text-emerald-300">
                                     {track.artist}
                                 </div>
@@ -95,38 +97,34 @@ export default function SetupPage() {
                     })}
                 </div>
 
-                {/* SELECTED SONGS */}
                 <div className="mb-4">
                     <p className="text-emerald-300 text-sm mb-2">
-                        Selected songs ({selected.length}/5)
+                        Selected ({selected.length}/5)
                     </p>
 
-                    <div className="space-y-2">
-                        {selected.map((song) => (
-                            <div
-                                key={song.id}
-                                className="flex justify-between bg-white/5 rounded px-3 py-2"
+                    {selected.map((song) => (
+                        <div
+                            key={song.id}
+                            className="flex justify-between bg-white/5 rounded px-3 py-2 mb-2"
+                        >
+              <span>
+                {song.name} — {song.artist}
+              </span>
+                            <button
+                                onClick={() =>
+                                    setSelected(selected.filter((s) => s.id !== song.id))
+                                }
+                                className="text-red-300"
                             >
-                <span>
-                  {song.name} — {song.artist}
-                </span>
-                                <button
-                                    onClick={() =>
-                                        setSelected(selected.filter((s) => s.id !== song.id))
-                                    }
-                                    className="text-red-300"
-                                >
-                                    Remove
-                                </button>
-                            </div>
-                        ))}
-                    </div>
+                                Remove
+                            </button>
+                        </div>
+                    ))}
                 </div>
 
-                {/* PASSWORD REQUIRED */}
                 <input
                     type="password"
-                    placeholder="Recovery password (required)"
+                    placeholder="Recovery password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full mt-2 px-4 py-2 bg-black/40 rounded"
@@ -141,5 +139,23 @@ export default function SetupPage() {
                 </button>
             </div>
         </main>
+    );
+}
+
+/* -----------------------------
+   Suspense wrapper
+------------------------------ */
+
+export default function SetupPage() {
+    return (
+        <Suspense
+            fallback={
+                <main className="min-h-screen flex items-center justify-center bg-black text-emerald-200">
+                    Loading setup…
+                </main>
+            }
+        >
+            <SetupInner />
+        </Suspense>
     );
 }

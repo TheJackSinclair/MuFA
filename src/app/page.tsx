@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Howl } from "howler";
 
 export default function Page() {
   const [username, setUsername] = useState("");
@@ -12,38 +13,33 @@ export default function Page() {
   const [timeLeft, setTimeLeft] = useState(5);
   const [locked, setLocked] = useState(false);
   const [password, setPassword] = useState("");
-  const [audioEnabled, setAudioEnabled] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const audioCtxRef = useRef<any>(null);
+  const soundRef = useRef<Howl | null>(null);
 
   const button =
       "w-full py-3 rounded-xl transition-all duration-150 active:scale-95 shadow-md";
 
-  async function enableAudio() {
-    const AudioContextCtor =
-        (window as any).AudioContext ||
-        (window as any).webkitAudioContext;
+  /* AUDIO PLAYBACK (Howler handles Safari) */
+  function playClip(url: string) {
+    if (!url) return;
 
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContextCtor();
+    if (soundRef.current) {
+      soundRef.current.stop();
+      soundRef.current.unload();
     }
 
-    await audioCtxRef.current.resume();
-    setAudioEnabled(true);
-  }
+    soundRef.current = new Howl({
+      src: [url],
+      html5: true,
+      volume: 1,
+    });
 
-  async function playClip() {
-    if (!audioRef.current || !audioEnabled) return;
+    soundRef.current.play();
 
-    try {
-      audioRef.current.currentTime = 0;
-      await audioRef.current.play();
-      setTimeout(() => audioRef.current?.pause(), 1000);
-    } catch {
-      setAudioEnabled(false);
-    }
+    setTimeout(() => {
+      soundRef.current?.stop();
+    }, 1000);
   }
 
   function startTimer() {
@@ -74,7 +70,7 @@ export default function Page() {
   }
 
   async function startLogin() {
-    if (!audioEnabled) return;
+    if (!username.trim()) return;
 
     const res = await fetch("/api/user", {
       method: "POST",
@@ -100,6 +96,7 @@ export default function Page() {
     setTotal(data.total);
     setReplays(data.replays);
 
+    playClip(data.preview);
     startTimer();
   }
 
@@ -140,6 +137,7 @@ export default function Page() {
     setTotal(data.total);
     setReplays(data.replays);
 
+    playClip(data.preview);
     startTimer();
   }
 
@@ -163,21 +161,15 @@ export default function Page() {
     setTotal(data.total);
     setReplays(data.replays);
 
+    playClip(data.preview);
     startTimer();
   }
 
   function replay() {
-    if (replays <= 0) return;
-    playClip();
+    if (!preview || replays <= 0) return;
+    playClip(preview);
     setReplays((r) => r - 1);
   }
-
-  useEffect(() => {
-    if (!preview || !audioEnabled) return;
-
-    const t = setTimeout(() => playClip(), 150);
-    return () => clearTimeout(t);
-  }, [preview, audioEnabled]);
 
   return (
       <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1f3a30] via-[#2f5546] to-black px-4">
@@ -186,15 +178,6 @@ export default function Page() {
 
           {!preview && !locked && (
               <>
-                {!audioEnabled && (
-                    <button
-                        onClick={enableAudio}
-                        className={`${button} mb-3 bg-emerald-700 hover:bg-emerald-600`}
-                    >
-                      Enable Audio
-                    </button>
-                )}
-
                 <input
                     className="w-full mb-4 px-4 py-3 bg-black/40 rounded"
                     placeholder="Username"
@@ -204,9 +187,9 @@ export default function Page() {
 
                 <button
                     onClick={startLogin}
-                    disabled={!audioEnabled || username.trim() === ""}
+                    disabled={!username.trim()}
                     className={`${button} ${
-                        audioEnabled && username.trim() !== ""
+                        username.trim()
                             ? "bg-emerald-600 hover:bg-emerald-700"
                             : "bg-gray-600 cursor-not-allowed"
                     }`}
@@ -216,17 +199,37 @@ export default function Page() {
               </>
           )}
 
+          {locked && (
+              <>
+                <p className="text-red-300 mb-3 text-center">Account locked</p>
+                <input
+                    type="password"
+                    placeholder="Recovery password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full mb-3 px-4 py-2 bg-black/40 rounded"
+                />
+                <button
+                    onClick={unlock}
+                    className={`${button} bg-emerald-600`}
+                >
+                  Unlock
+                </button>
+              </>
+          )}
+
           {preview && (
               <>
-                <audio ref={audioRef} src={preview} preload="auto" playsInline />
-
                 <p className="text-red-300 mb-2">Time left: {timeLeft}s</p>
 
                 <button onClick={replay} className={`${button} bg-emerald-600 mb-3`}>
                   Replay ({replays})
                 </button>
 
-                <button onClick={notMySong} className={`${button} bg-red-600 mb-3`}>
+                <button
+                    onClick={notMySong}
+                    className={`${button} bg-red-600 mb-3`}
+                >
                   Not my song
                 </button>
 

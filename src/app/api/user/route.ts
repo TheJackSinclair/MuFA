@@ -71,7 +71,17 @@ export async function POST(req: Request) {
     }
 
     if (!user) return Response.json({ exists: false });
-    if (user.locked) return Response.json({ locked: true });
+
+    /* LOCKED ACCOUNT */
+    if (user.locked && !password) {
+        return Response.json({ exists: true, locked: true });
+    }
+
+    /* PASSWORD UNLOCK */
+    if (user.locked && password === user.password) {
+        await redis.set(userKey, { ...user, locked: false });
+        return Response.json({ unlocked: true });
+    }
 
     /* START SESSION */
     if (!guess && !notMine) {
@@ -110,13 +120,11 @@ export async function POST(req: Request) {
     const totalSteps = session.songs.length + 1;
     const isDecoyStep = session.index === session.decoyIndex;
 
-    /* HANDLE DECOY STEP */
     if (isDecoyStep) {
         if (!notMine) {
             await redis.set(userKey, { ...user, locked: true });
             return Response.json({ success: false });
         }
-
         session.index++;
         await redis.set(sessionKey, session);
     } else {
@@ -136,13 +144,11 @@ export async function POST(req: Request) {
         await redis.set(sessionKey, session);
     }
 
-    /* COMPLETE */
     if (session.index >= totalSteps) {
         await redis.del(sessionKey);
         return Response.json({ success: true });
     }
 
-    /* NEXT STEP */
     const nextIsDecoy = session.index === session.decoyIndex;
 
     let nextSong: Track;

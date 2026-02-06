@@ -21,16 +21,10 @@ type Session = {
 };
 
 async function getRandomDecoy(): Promise<Track> {
-    const offset = Math.floor(Math.random() * 300);
-
-    const res = await fetch(
-        `https://api.deezer.com/search?q=track&index=${offset}&limit=25`
-    );
-
+    const res = await fetch("https://api.deezer.com/chart/0/tracks");
     const data = await res.json();
 
     const pool = data.data.filter((t: any) => t.preview);
-
     const t = pool[Math.floor(Math.random() * pool.length)];
 
     return {
@@ -42,12 +36,7 @@ async function getRandomDecoy(): Promise<Track> {
 }
 
 async function getOptions(song: Track) {
-    const offset = Math.floor(Math.random() * 300);
-
-    const res = await fetch(
-        `https://api.deezer.com/search?q=track&index=${offset}&limit=30`
-    );
-
+    const res = await fetch("https://api.deezer.com/chart/0/tracks");
     const data = await res.json();
 
     const decoys = data.data

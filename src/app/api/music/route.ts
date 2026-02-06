@@ -12,6 +12,7 @@ export async function GET(req: Request) {
         tracks: data.data.slice(0, 5).map((t: any) => ({
             id: String(t.id),
             name: t.title,
+            artist: t.artist.name,
             preview_url: t.preview,
         })),
     });

@@ -1,53 +1,50 @@
 "use client";
 
-import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-
-/* ───────────────────────────
-   Types
-─────────────────────────── */
+import { useState } from "react";
 
 type Track = {
-    id: string | number;
+    id: string;
     name: string;
+    artist: string;
     preview_url?: string;
 };
 
-/* ───────────────────────────
-   Inner component (uses useSearchParams)
-─────────────────────────── */
-
-function SetupInner() {
-    const params = useSearchParams();
-    const username = params.get("u");
+export default function SetupPage() {
+    const username = useSearchParams().get("u");
 
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<Track[]>([]);
     const [selected, setSelected] = useState<Track[]>([]);
-    const [status, setStatus] = useState("");
+    const [password, setPassword] = useState("");
 
     async function search() {
-        if (!query.trim()) return;
-
-        const res = await fetch(`/api/music?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/music?q=${query}`);
         const data = await res.json();
-
-        setResults(data.tracks ?? []);
-
+        setResults(data.tracks);
     }
 
-    async function finishSetup() {
-        setStatus("Saving security songs…");
+    function toggleSong(track: Track) {
+        if (selected.find((s) => s.id === track.id)) {
+            setSelected(selected.filter((s) => s.id !== track.id));
+            return;
+        }
+
+        if (selected.length < 5) {
+            setSelected([...selected, track]);
+        }
+    }
+
+    async function finish() {
+        if (selected.length !== 5 || !password) return;
 
         await fetch("/api/user", {
             method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 username,
-                setupSongs: selected.map((t) => ({
-                    id: t.id,
-                    name: t.name,
-                    preview_url: t.preview_url,
-                })),
+                password,
+                setupSongs: selected,
             }),
         });
 
@@ -56,94 +53,93 @@ function SetupInner() {
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1f3a30] via-[#2f5546] to-black px-4">
-            <div className="w-full max-w-md rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl p-8">
-                <h1 className="text-2xl font-semibold text-emerald-100 mb-1">
-                    Set up MuFA
-                </h1>
-                <p className="text-sm text-emerald-300 mb-6">
-                    Choose 5 songs only you would recognize
-                </p>
+            <div className="w-full max-w-lg bg-white/10 backdrop-blur-xl p-8 rounded-2xl">
+                <h1 className="text-2xl text-emerald-100 mb-4">Setup MuFA</h1>
 
-                <div className="flex gap-2 mb-6">
+                <div className="flex gap-2 mb-4">
                     <input
-                        className="flex-1 px-4 py-3 rounded-lg bg-black/40 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Search for a song"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
+                        className="flex-1 px-4 py-2 bg-black/40 rounded"
+                        placeholder="Search songs"
                     />
-                    <button
-                        onClick={search}
-                        className="px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition"
-                    >
+                    <button onClick={search} className="px-4 bg-emerald-600 rounded">
                         Search
                     </button>
                 </div>
 
-                <div className="space-y-2 max-h-44 overflow-y-auto mb-6">
+                {/* SEARCH RESULTS */}
+                <div className="grid grid-cols-1 gap-2 mb-4">
                     {results.map((track) => {
-                        const added = selected.some((s) => s.id === track.id);
+                        const isSelected = selected.find((s) => s.id === track.id);
 
                         return (
-                            <div
+                            <button
                                 key={track.id}
-                                className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2"
+                                onClick={() => toggleSong(track)}
+                                className={`text-left p-3 rounded-lg border transition
+                ${
+                                    isSelected
+                                        ? "bg-emerald-700 border-emerald-400"
+                                        : "bg-white/5 border-white/10 hover:bg-white/10"
+                                }`}
                             >
-                <span className="text-sm text-emerald-100 truncate">
-                  {track.name}
-                </span>
-                                <button
-                                    disabled={added || selected.length === 5}
-                                    onClick={() => setSelected([...selected, track])}
-                                    className="text-xs px-3 py-1 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40"
-                                >
-                                    {added ? "Added" : "Add"}
-                                </button>
-                            </div>
+                                <div className="text-sm font-medium">
+                                    {track.name}
+                                </div>
+                                <div className="text-xs text-emerald-300">
+                                    {track.artist}
+                                </div>
+                            </button>
                         );
                     })}
                 </div>
 
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-emerald-300">
-                        {selected.length} / 5 selected
+                {/* SELECTED SONGS */}
+                <div className="mb-4">
+                    <p className="text-emerald-300 text-sm mb-2">
+                        Selected songs ({selected.length}/5)
                     </p>
 
-                    {selected.length === 5 && (
-                        <button
-                            onClick={finishSetup}
-                            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition"
-                        >
-                            Finish
-                        </button>
-                    )}
+                    <div className="space-y-2">
+                        {selected.map((song) => (
+                            <div
+                                key={song.id}
+                                className="flex justify-between bg-white/5 rounded px-3 py-2"
+                            >
+                <span>
+                  {song.name} — {song.artist}
+                </span>
+                                <button
+                                    onClick={() =>
+                                        setSelected(selected.filter((s) => s.id !== song.id))
+                                    }
+                                    className="text-red-300"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                {status && (
-                    <p className="mt-4 text-sm text-emerald-200 text-center">
-                        {status}
-                    </p>
-                )}
+                {/* PASSWORD REQUIRED */}
+                <input
+                    type="password"
+                    placeholder="Recovery password (required)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full mt-2 px-4 py-2 bg-black/40 rounded"
+                />
+
+                <button
+                    disabled={selected.length !== 5 || !password}
+                    onClick={finish}
+                    className="w-full mt-4 py-3 bg-emerald-600 rounded disabled:opacity-40"
+                >
+                    Finish Setup
+                </button>
             </div>
         </main>
-    );
-}
-
-/* ───────────────────────────
-   Suspense wrapper (required)
-─────────────────────────── */
-
-export default function SetupPage() {
-    return (
-        <Suspense
-            fallback={
-                <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1f3a30] via-[#2f5546] to-black">
-                    <div className="text-emerald-200 text-sm">
-                        Loading setup…
-                    </div>
-                </main>
-            }
-        >
-            <SetupInner />
-        </Suspense>
     );
 }

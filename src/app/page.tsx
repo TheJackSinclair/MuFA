@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Howl } from "howler";
 
 export default function Page() {
@@ -20,20 +20,26 @@ export default function Page() {
   const button =
       "w-full py-3 rounded-xl transition-all duration-150 active:scale-95 shadow-md";
 
-  /* AUDIO PLAYBACK (Howler handles Safari) */
-  function playClip(url: string) {
+  /* SINGLE PLAYER INSTANCE */
+  function loadAndPlay(url: string) {
     if (!url) return;
 
-    if (soundRef.current) {
+    if (!soundRef.current) {
+      soundRef.current = new Howl({
+        src: [url],
+        html5: true,
+        volume: 1,
+      });
+    } else {
       soundRef.current.stop();
       soundRef.current.unload();
-    }
 
-    soundRef.current = new Howl({
-      src: [url],
-      html5: true,
-      volume: 1,
-    });
+      soundRef.current = new Howl({
+        src: [url],
+        html5: true,
+        volume: 1,
+      });
+    }
 
     soundRef.current.play();
 
@@ -96,23 +102,8 @@ export default function Page() {
     setTotal(data.total);
     setReplays(data.replays);
 
-    playClip(data.preview);
+    loadAndPlay(data.preview);
     startTimer();
-  }
-
-  async function unlock() {
-    const res = await fetch("/api/user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-
-    const data = await res.json();
-
-    if (data.unlocked) {
-      setLocked(false);
-      startLogin();
-    }
   }
 
   async function submitGuess(name: string) {
@@ -137,7 +128,7 @@ export default function Page() {
     setTotal(data.total);
     setReplays(data.replays);
 
-    playClip(data.preview);
+    loadAndPlay(data.preview);
     startTimer();
   }
 
@@ -161,13 +152,13 @@ export default function Page() {
     setTotal(data.total);
     setReplays(data.replays);
 
-    playClip(data.preview);
+    loadAndPlay(data.preview);
     startTimer();
   }
 
   function replay() {
     if (!preview || replays <= 0) return;
-    playClip(preview);
+    loadAndPlay(preview);
     setReplays((r) => r - 1);
   }
 
@@ -199,25 +190,6 @@ export default function Page() {
               </>
           )}
 
-          {locked && (
-              <>
-                <p className="text-red-300 mb-3 text-center">Account locked</p>
-                <input
-                    type="password"
-                    placeholder="Recovery password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full mb-3 px-4 py-2 bg-black/40 rounded"
-                />
-                <button
-                    onClick={unlock}
-                    className={`${button} bg-emerald-600`}
-                >
-                  Unlock
-                </button>
-              </>
-          )}
-
           {preview && (
               <>
                 <p className="text-red-300 mb-2">Time left: {timeLeft}s</p>
@@ -226,10 +198,7 @@ export default function Page() {
                   Replay ({replays})
                 </button>
 
-                <button
-                    onClick={notMySong}
-                    className={`${button} bg-red-600 mb-3`}
-                >
+                <button onClick={notMySong} className={`${button} bg-red-600 mb-3`}>
                   Not my song
                 </button>
 

@@ -102,7 +102,7 @@ export default function Page() {
     setTotal(data.total);
     setReplays(data.replays);
 
-    loadAndPlay(`/api/preview?url=${encodeURIComponent(data.preview)}`);
+    loadAndPlay(data.preview);
     startTimer();
   }
 

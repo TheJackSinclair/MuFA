@@ -16,6 +16,9 @@ export default function Page() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const buttonBase =
+      "w-full mb-2 py-3 rounded-xl font-medium transition-all duration-150 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-400";
+
   function playClip() {
     if (!audioRef.current) return;
     audioRef.current.currentTime = 0;
@@ -58,11 +61,6 @@ export default function Page() {
       return;
     }
 
-    if (data.unlocked) {
-      setLocked(false);
-      return;
-    }
-
     setPreview(data.preview);
     setOptions(data.options);
     setProgress(data.progress);
@@ -92,7 +90,9 @@ export default function Page() {
 
     const res = await fetch("/api/user", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ username, guess: name }),
     });
 
@@ -145,20 +145,25 @@ export default function Page() {
     if (preview) playClip();
   }, [preview]);
 
+  const timerPercent = (timeLeft / 5) * 100;
+
   return (
       <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1f3a30] via-[#2f5546] to-black px-4">
-        <div className="w-full max-w-md bg-white/10 backdrop-blur-xl p-8 rounded-2xl">
-          <h1 className="text-3xl text-emerald-100 mb-6">MuFA</h1>
+        <div className="w-full max-w-md bg-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-2xl">
+          <h1 className="text-3xl text-emerald-100 mb-6 text-center">MuFA</h1>
 
           {!preview && !locked && (
               <>
                 <input
-                    className="w-full mb-4 px-4 py-3 bg-black/40 rounded"
+                    className="w-full mb-4 px-4 py-3 bg-black/40 rounded-lg border border-white/10"
                     placeholder="Username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                 />
-                <button onClick={startLogin} className="w-full py-3 bg-emerald-600 rounded">
+                <button
+                    onClick={startLogin}
+                    className="w-full py-3 bg-emerald-600 rounded-xl hover:bg-emerald-700 active:scale-95 transition"
+                >
                   Continue
                 </button>
               </>
@@ -166,7 +171,7 @@ export default function Page() {
 
           {locked && (
               <>
-                <p className="text-red-300 mb-3">Account locked</p>
+                <p className="text-red-300 mb-3 text-center">Account locked</p>
                 <input
                     type="password"
                     placeholder="Recovery password"
@@ -174,7 +179,10 @@ export default function Page() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full mb-3 px-4 py-2 bg-black/40 rounded"
                 />
-                <button onClick={unlock} className="w-full py-2 bg-emerald-600 rounded">
+                <button
+                    onClick={unlock}
+                    className="w-full py-2 bg-emerald-600 rounded-xl"
+                >
                   Unlock
                 </button>
               </>
@@ -184,13 +192,31 @@ export default function Page() {
               <>
                 <audio ref={audioRef} src={preview} />
 
-                <p className="text-red-300 mb-2">Time left: {timeLeft}s</p>
+                {/* Timer Bar */}
+                <div className="mb-3">
+                  <div className="h-2 bg-black/30 rounded overflow-hidden">
+                    <div
+                        className="h-full bg-emerald-500 transition-all duration-1000"
+                        style={{ width: `${timerPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-emerald-200 mt-1">
+                    Song {progress} of {total} • {timeLeft}s
+                  </p>
+                </div>
 
-                <button onClick={replay} className="w-full mb-4 py-2 bg-emerald-600 rounded">
+                <button
+                    onClick={replay}
+                    disabled={replays === 0}
+                    className={`${buttonBase} bg-emerald-600 hover:bg-emerald-700`}
+                >
                   Replay ({replays})
                 </button>
 
-                <button onClick={notMySong} className="w-full mb-3 py-2 bg-red-600 rounded">
+                <button
+                    onClick={notMySong}
+                    className={`${buttonBase} bg-red-600 hover:bg-red-700`}
+                >
                   Not my song
                 </button>
 
@@ -198,7 +224,7 @@ export default function Page() {
                     <button
                         key={opt.id}
                         onClick={() => submitGuess(opt.name)}
-                        className="w-full mb-2 py-2 bg-emerald-700 rounded"
+                        className={`${buttonBase} bg-emerald-700 hover:bg-emerald-600`}
                     >
                       {opt.name} — {opt.artist}
                     </button>

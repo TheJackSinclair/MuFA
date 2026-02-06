@@ -28,18 +28,33 @@ export default function Page() {
 
   function startTimer() {
     setTimeLeft(5);
+
     if (timerRef.current) clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
-          setPreview(null);
+          handleTimeout();
           return 0;
         }
         return t - 1;
       });
     }, 1000);
+  }
+
+  async function handleTimeout() {
+    await fetch("/api/user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        guess: "__timeout__", // forces failure path
+      }),
+    });
+
+    setPreview(null);
+    setLocked(true);
   }
 
   async function startLogin() {

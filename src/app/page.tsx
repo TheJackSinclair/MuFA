@@ -19,18 +19,17 @@ export default function Page() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioCtxRef = useRef<any>(null);
 
   async function enableAudio() {
     try {
       setAudioHint(null);
 
-      // Create/resume AudioContext inside a user gesture
       const AudioContextCtor =
-          (window as any).AudioContext || (window as any).webkitAudioContext;
+          (window as any).AudioContext ||
+          (window as any).webkitAudioContext;
 
       if (!AudioContextCtor) {
-        // Very old browsers – allow continue anyway
         setAudioEnabled(true);
         return;
       }
@@ -43,7 +42,6 @@ export default function Page() {
         await audioCtxRef.current.resume();
       }
 
-      // Play a tiny silent buffer to fully “unlock” on iOS
       const ctx = audioCtxRef.current;
       const buffer = ctx.createBuffer(1, 1, 22050);
       const src = ctx.createBufferSource();
@@ -52,11 +50,11 @@ export default function Page() {
       src.start(0);
 
       setAudioEnabled(true);
-    } catch (e) {
+    } catch {
       setAudioEnabled(false);
-      setAudioHint("Tap again to enable audio (mobile browsers block autoplay).");
     }
   }
+
 
   async function playClip() {
     if (!audioRef.current || !audioEnabled) return;

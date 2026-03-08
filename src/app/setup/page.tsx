@@ -129,6 +129,9 @@ function SetupInner() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full mt-2 px-4 py-2 bg-black/40 rounded"
                 />
+                <p className="text-red-50 text-xs mb-2">
+                    ** THIS IS A PROTOTYPE SYSTEM — DO NOT ENTER YOUR REAL PASSWORD OR PERSONAL INFORMATION. USE A MADE-UP PASSWORD ONLY. **
+                </p>
 
                 <button
                     disabled={selected.length !== 5 || !password}
